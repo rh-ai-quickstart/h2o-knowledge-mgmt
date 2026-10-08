@@ -4,3 +4,8 @@ description: Helm chart for the H2O Knowledge Management API quickstart
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
+dependencies:
+  - name: aws-compatible-storage
+    version: 0.1.0
+    repository: https://rh-ai-quickstart.github.io/ai-architecture-charts
+    condition: aws-compatible-storage.enabled

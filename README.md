@@ -41,3 +41,5 @@ helm upgrade --install h2o-knowledge-mgmt deploy/helm/h2o-knowledge-mgmt \
   --set image.repository=your-registry/h2o-knowledge-mgmt-api \
   --set image.tag=dev
 ```
+
+The chart also deploys the shared `aws-compatible-storage` chart. The API receives the internal S3 endpoint and credentials from the storage chart's Kubernetes Secret. The S3 endpoint is `http://h2o-knowledge-mgmt-storage:7480`; application features can choose and create buckets as they are implemented.

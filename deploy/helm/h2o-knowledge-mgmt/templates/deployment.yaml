@@ -19,6 +19,21 @@ spec:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: AWS_S3_ENDPOINT
+              value: http://h2o-knowledge-mgmt-storage:7480
+            - name: AWS_DEFAULT_REGION
+              value: {{ index .Values "aws-compatible-storage" "s3" "region" | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: h2o-knowledge-mgmt-storage-credentials
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: h2o-knowledge-mgmt-storage-credentials
+                  key: AWS_SECRET_ACCESS_KEY
           ports:
             - name: http
               containerPort: 8000
