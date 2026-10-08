@@ -32,7 +32,7 @@ spec:
             - -ec
           args:
             - |
-              python3 -m pip install --user --disable-pip-version-check --no-cache-dir boto3 requests
+              python3 -m pip install --disable-pip-version-check --no-cache-dir boto3 requests
               python3 <<'PY'
               import json
               import os

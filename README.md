@@ -2,57 +2,47 @@
 
 > **WORK IN PROGRESS - NOT READY FOR USE**
 
-This repository is an early scaffold for an AI Quickstart exploring knowledge management with H2O.ai and Red Hat OpenShift AI. It currently contains a minimal FastAPI service, a unit test, and a Helm chart. Product behavior, data flows, and deployment requirements are still to be defined.
+This repository is an early scaffold for an AI Quickstart exploring knowledge management with H2O.ai and Red Hat OpenShift AI.
+
+It currently contains a small Python API scaffold deployed with Helm alongside S3-compatible storage. On install, a Job uploads the configured sample document to the `documents` bucket. The API currently provides a health endpoint at `/healthz`.
 
 ## Repository layout
 
 ```text
-packages/api/                       Python API package and unit tests
-deploy/helm/h2o-knowledge-mgmt/     Helm chart
+packages/api/                    Python API and tests
+deploy/helm/h2o-knowledge-mgmt/  Helm chart for the API, S3 storage, and document upload
 ```
 
-## Local development
-
-Install [uv](https://docs.astral.sh/uv/) and Python 3.12 or newer, then run:
+## Installation
 
 ```bash
-make setup
-make test
-make lint
-make dev
+make deploy
 ```
 
-The API exposes `GET /healthz` on port `8000` as a basic liveness endpoint.
-
-## Container image
-
-Build the API image from the repository root:
+This uses the namespace from the current Kubernetes context. To deploy to a specific namespace (created if needed):
 
 ```bash
-podman build -f packages/api/Containerfile -t h2o-knowledge-mgmt-api:dev .
+make deploy NAMESPACE=my-namespace
 ```
 
-## Helm chart
+## Project teardown
 
-The chart is at `deploy/helm/h2o-knowledge-mgmt`. Set `image.repository` and `image.tag` to an image available to your cluster before installing it:
+Remove the deployment from the current namespace, or specify the namespace used during installation:
 
 ```bash
-helm upgrade --install h2o-knowledge-mgmt deploy/helm/h2o-knowledge-mgmt \
-  --set image.repository=your-registry/h2o-knowledge-mgmt-api \
-  --set image.tag=dev
+make undeploy
+make undeploy NAMESPACE=my-namespace
 ```
 
-The chart also deploys the shared `aws-compatible-storage` chart. The API receives the internal S3 endpoint and credentials from the storage chart's Kubernetes Secret. The S3 endpoint is `http://h2o-knowledge-mgmt-storage:7480`; application features can choose and create buckets as they are implemented.
+## Make targets
 
-To create a `documents` bucket and upload sample documents during installation, enable the post-install job and provide HTTP or HTTPS URLs:
 
-```yaml
-sampleFileUpload:
-  enabled: true
-  bucket: documents
-  region: us-east-1
-  urls:
-    - https://example.com/sample-document.pdf
-```
-
-The job runs in a UBI Python image, waits for S3 storage to become available, creates the bucket if needed, and stores each document under its filename. It installs `boto3` and `requests` at startup, so the cluster needs access to the Python package index. It starts during installation and remains available for inspection for up to 24 hours after completion. Changing the bucket, region, or URLs on a Helm upgrade creates a new upload job.
+| Target           | Purpose                                                              |
+| ---------------- | -------------------------------------------------------------------- |
+| `make setup`     | Install Python and development dependencies.                         |
+| `make test`      | Run API tests.                                                       |
+| `make lint`      | Check Python code style.                                             |
+| `make dev`       | Run the API locally.                                                 |
+| `make helm-lint` | Check the Helm chart.                                                |
+| `make deploy`    | Install the API and S3 storage, then upload the configured document. |
+| `make undeploy`  | Remove the deployment.                                               |

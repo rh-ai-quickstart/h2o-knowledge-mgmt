@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from h2o_knowledge_mgmt_api.main import app
 
 client = TestClient(app)
