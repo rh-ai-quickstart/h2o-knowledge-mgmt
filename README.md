@@ -43,3 +43,16 @@ helm upgrade --install h2o-knowledge-mgmt deploy/helm/h2o-knowledge-mgmt \
 ```
 
 The chart also deploys the shared `aws-compatible-storage` chart. The API receives the internal S3 endpoint and credentials from the storage chart's Kubernetes Secret. The S3 endpoint is `http://h2o-knowledge-mgmt-storage:7480`; application features can choose and create buckets as they are implemented.
+
+To create a `documents` bucket and upload sample documents during installation, enable the post-install job and provide HTTP or HTTPS URLs:
+
+```yaml
+sampleFileUpload:
+  enabled: true
+  bucket: documents
+  region: us-east-1
+  urls:
+    - https://example.com/sample-document.pdf
+```
+
+The job runs in a UBI Python image, waits for S3 storage to become available, creates the bucket if needed, and stores each document under its filename. It installs `boto3` and `requests` at startup, so the cluster needs access to the Python package index. It starts during installation and remains available for inspection for up to 24 hours after completion. Changing the bucket, region, or URLs on a Helm upgrade creates a new upload job.

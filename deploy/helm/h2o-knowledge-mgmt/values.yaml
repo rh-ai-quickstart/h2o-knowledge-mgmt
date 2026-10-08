@@ -25,3 +25,9 @@ aws-compatible-storage:
   storage:
     data:
       size: 10Gi
+
+sampleFileUpload:
+  enabled: false
+  bucket: documents
+  region: us-east-1
+  urls: []
