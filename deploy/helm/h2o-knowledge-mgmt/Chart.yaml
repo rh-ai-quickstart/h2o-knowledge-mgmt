@@ -1,0 +1,6 @@
+apiVersion: v2
+name: h2o-knowledge-mgmt
+description: Helm chart for the H2O Knowledge Management API quickstart
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

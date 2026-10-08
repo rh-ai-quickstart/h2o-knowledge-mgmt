@@ -1,0 +1,12 @@
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+WORKDIR /opt/app-root/src
+
+COPY packages/api/pyproject.toml ./pyproject.toml
+COPY packages/api/src ./src
+
+RUN pip install --no-cache-dir .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "h2o_knowledge_mgmt_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
