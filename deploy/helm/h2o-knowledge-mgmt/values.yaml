@@ -16,6 +16,8 @@ aws-compatible-storage:
   fullnameOverride: h2o-knowledge-mgmt-storage
   s3:
     region: us-east-1
+    accessKeyId: ""
+    secretAccessKey: ""
   auth:
     enabled: false
   route:
@@ -30,5 +32,9 @@ sampleFileUpload:
   enabled: true
   bucket: documents
   region: us-east-1
+  image:
+    repository: quay.io/ecosystem-appeng/h2o-knowledge-mgmt-document-uploader-job
+    tag: "0.1.4"
+    pullPolicy: IfNotPresent
   urls:
     - https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/pdf/overview/OpenShift_Container_Platform-4.19-Overview-en-US.pdf

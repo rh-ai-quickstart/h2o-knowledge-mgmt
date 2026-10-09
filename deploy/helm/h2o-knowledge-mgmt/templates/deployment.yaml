@@ -1,3 +1,8 @@
+{{- $storage := index .Values "aws-compatible-storage" -}}
+{{- if $storage.enabled -}}
+{{- $_ := required "aws-compatible-storage.s3.accessKeyId must be provided" $storage.s3.accessKeyId -}}
+{{- $_ := required "aws-compatible-storage.s3.secretAccessKey must be provided" $storage.s3.secretAccessKey -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

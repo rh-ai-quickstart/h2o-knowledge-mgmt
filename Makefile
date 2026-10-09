@@ -1,30 +1,41 @@
 RELEASE ?= h2o-knowledge-mgmt
 NAMESPACE ?=
 HELM_ARGS ?=
+STORAGE_ACCESS_KEY_ID ?=
+STORAGE_SECRET_ACCESS_KEY ?=
 CHART_DIR := deploy/helm/h2o-knowledge-mgmt
 HELM_NAMESPACE_ARG = $(if $(strip $(NAMESPACE)),--namespace $(NAMESPACE),)
 HELM_CREATE_NAMESPACE_ARG = $(if $(strip $(NAMESPACE)),--create-namespace,)
+STORAGE_CREDENTIAL_ARGS = --set-string aws-compatible-storage.s3.accessKeyId='$(STORAGE_ACCESS_KEY_ID)' --set-string aws-compatible-storage.s3.secretAccessKey='$(STORAGE_SECRET_ACCESS_KEY)'
 
-.PHONY: setup test lint dev helm-lint deploy undeploy
+.PHONY: setup test lint dev helm-lint helm-dependency-build helm-dependency-update deploy undeploy
 
 setup:
-	uv sync --package h2o-knowledge-mgmt-api --extra dev
+	uv sync --project services/api --extra dev
 
 test:
-	uv run --package h2o-knowledge-mgmt-api --extra dev pytest
+	uv run --project services/api --extra dev pytest
 
 lint:
-	uv run --package h2o-knowledge-mgmt-api --extra dev ruff check .
+	uv run --project services/api --extra dev ruff check .
 
 dev:
-	uv run --package h2o-knowledge-mgmt-api uvicorn h2o_knowledge_mgmt_api.main:app --reload --app-dir packages/api/src
+	uv run --project services/api uvicorn h2o_knowledge_mgmt_api.main:app --reload --app-dir services/api/src
 
-helm-lint:
+helm-lint: helm-dependency-build
 	helm lint $(CHART_DIR)
 
-deploy:
+helm-dependency-build:
+	helm dependency build $(CHART_DIR)
+
+helm-dependency-update:
 	helm dependency update $(CHART_DIR)
-	helm upgrade --install $(RELEASE) $(CHART_DIR) $(HELM_NAMESPACE_ARG) $(HELM_CREATE_NAMESPACE_ARG) $(HELM_ARGS)
+
+deploy: helm-dependency-build
+	@if [ -z "$(strip $(STORAGE_ACCESS_KEY_ID))" ] || [ -z "$(strip $(STORAGE_SECRET_ACCESS_KEY))" ]; then \
+		echo "Set STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY to deploy." >&2; exit 1; \
+	fi
+	helm upgrade --install $(RELEASE) $(CHART_DIR) $(HELM_NAMESPACE_ARG) $(HELM_CREATE_NAMESPACE_ARG) $(STORAGE_CREDENTIAL_ARGS) $(HELM_ARGS)
 
 undeploy:
 	helm uninstall $(RELEASE) $(HELM_NAMESPACE_ARG)
