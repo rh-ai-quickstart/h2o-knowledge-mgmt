@@ -332,7 +332,7 @@ oc run test-model-access --rm -it --restart=Never \
    }
    ```
 
-   - `<model ID>`: the model ID that the endpoint expects, for example `gpt-oss-20b`. In `litellm_params`, keep the `openai/` prefix before the model ID: it tells h2oGPTe to call the endpoint with the OpenAI API.
+   - `<model ID>`: the model ID that the endpoint expects, for example `gpt-oss-20b`.
    - `<endpoint URL>`: the endpoint URL, ending in `/v1`.
    - `<API key>`: the token or API key of the endpoint.
 
