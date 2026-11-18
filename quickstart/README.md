@@ -101,12 +101,12 @@ By the end of this quickstart, you will have:
 
 ### Architecture
 
-![Architecture diagram: users connect through OpenShift Routes to h2oGPTe and Keycloak in the h2o-knowledge-mgmt namespace. h2oGPTe uses 2 GPUs and the data services and vector database included with it, and sends prompts to an LLM, such as gpt-oss-20b, served by vLLM on OpenShift AI, or to an external endpoint such as MaaS.](docs/images/architecture.png)
+![Architecture diagram: users connect through OpenShift Routes to h2oGPTe and Keycloak in the h2o-knowledge-mgmt namespace. h2oGPTe uses 2 GPUs and the data services and vector database included with it, and its model router sends prompts to an LLM, such as gpt-oss-20b, served by vLLM on OpenShift AI, or to an external endpoint such as MaaS.](docs/images/architecture.png)
 
 | Layer | Component | Purpose |
 | --- | --- | --- |
 | **Access** | OpenShift Routes | Expose h2oGPTe and Keycloak to users over TLS |
-| **Knowledge management** | H2O Enterprise h2oGPTe (2 GPUs) | Web UI and API, collections and chat, document processing and OCR, embeddings, and search |
+| **Knowledge management** | H2O Enterprise h2oGPTe (2 GPUs) | Web UI and API, collections and chat, document processing and OCR, embeddings, and search. Its model router sends each prompt to the configured LLM. |
 | **Identity** | Keycloak (included with h2oGPTe) | User login for h2oGPTe |
 | **Data services** | PostgreSQL, MinIO, Redis (included with h2oGPTe) | Metadata, document storage, and caching |
 | **Vector database** | [VEX](https://docs.h2o.ai/enterprise-h2ogpte/architecture/vector-database) (included with h2oGPTe) | Stores the document passages and their embeddings for search |
@@ -326,13 +326,13 @@ oc run test-model-access --rm -it --restart=Never \
      "images_num_max": -2,
      "is_actually_vision_model": true,
      "is_actually_reasoning_model": true,
-     "lite_llm_yaml": "{\"model_name\": \"<model ID>\", \"litellm_params\": {\"model\": \"<model ID>\", \"api_base\": \"<endpoint URL>\", \"api_key\": \"<API key>\"}}",
+     "lite_llm_yaml": "{\"model_name\": \"<model ID>\", \"litellm_params\": {\"model\": \"openai/<model ID>\", \"api_base\": \"<endpoint URL>\", \"api_key\": \"<API key>\"}}",
      "cost_per_1k_input_tokens": 0.0001,
      "cost_per_1k_output_tokens": 0.00025
    }
    ```
 
-   - `<model ID>`: the model ID that the endpoint expects, for example `gpt-oss-20b`. Use the plain model ID, without a provider prefix such as `openai/`.
+   - `<model ID>`: the model ID that the endpoint expects, for example `gpt-oss-20b`. In `litellm_params`, keep the `openai/` prefix before the model ID: it tells h2oGPTe to call the endpoint with the OpenAI API.
    - `<endpoint URL>`: the endpoint URL, ending in `/v1`.
    - `<API key>`: the token or API key of the endpoint.
 
