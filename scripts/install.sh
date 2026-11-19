@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install H2O Enterprise h2oGPTe on OpenShift for the knowledge management quickstart.
-# Usage: ./scripts/install.sh   (run from the repository root or use an absolute path)
+# Usage: ./scripts/install.sh [--install-model true|false]
 
 set -euo pipefail
 
@@ -289,6 +289,19 @@ EOF
 }
 
 main() {
+  local install_model=false
+  while (( $# > 0 )); do
+    case "$1" in
+      --install-model)
+        (( $# >= 2 )) || die "--install-model requires true or false."
+        install_model="$2"; shift 2 ;;
+      *) die "Unknown argument: $1" ;;
+    esac
+  done
+  case "${install_model}" in
+    true|false) ;;
+    *) die "--install-model requires true or false." ;;
+  esac
   load_env
   check_cluster
   create_namespace
@@ -301,6 +314,9 @@ main() {
   wait_for_pods
   create_admin_user
   print_summary
+  if [[ "${install_model}" == true ]]; then
+    "${SCRIPT_DIR}/model.sh" install
+  fi
 }
 
 main "$@"
