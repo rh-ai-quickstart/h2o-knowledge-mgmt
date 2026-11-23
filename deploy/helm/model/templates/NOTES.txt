@@ -1,0 +1,10 @@
+The model resources have been submitted to KServe. Helm does not wait for
+InferenceService readiness. Wait for the model before connecting h2oGPTe:
+  oc wait --for=condition=Ready inferenceservice/{{ .Release.Name }} -n {{ .Release.Namespace }} --timeout=30m
+
+Connect h2oGPTe after the model is ready:
+  Model ID: {{ .Values.model.servedName }}
+  OpenAI base URL: http://{{ .Release.Name }}-predictor.{{ .Release.Namespace }}.svc.cluster.local/v1
+
+This endpoint is internal and has no token authentication. Restrict access to
+trusted workloads with your cluster's network policies. No external route is requested.

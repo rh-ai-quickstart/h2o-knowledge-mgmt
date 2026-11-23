@@ -37,7 +37,7 @@ Enterprise knowledge is spread across policies, manuals, contracts, and reports 
 
 With the model on the cluster, everything runs on your own OpenShift cluster: the h2oGPTe application with its document processing and search services, and the model server. OpenShift AI is an operator on the same cluster. In this quickstart, it only serves the model with vLLM; h2oGPTe itself is installed with Helm and doesn't depend on it. Documents and questions never leave the cluster.
 
-The installation script deploys h2oGPTe. You then connect a model in two steps: deploy the model in the OpenShift AI dashboard, then add it in the h2oGPTe UI. Finally, you create a collection in the h2oGPTe UI and upload the sample documents to it.
+The installation script deploys h2oGPTe and can optionally deploy gpt-oss-20b on OpenShift AI with Helm. You then add the model in the h2oGPTe UI. Finally, you create a collection in the h2oGPTe UI and upload the sample documents to it.
 
 ### Who is this for?
 
@@ -61,7 +61,7 @@ A private knowledge base addresses both problems. Documents stay inside the orga
 This quickstart provides:
 
 - An installation script that deploys H2O Enterprise h2oGPTe from the H2O AI Cloud Helm chart
-- A guide to deploy an LLM with vLLM from the OpenShift AI dashboard, or use an external endpoint, and add it in the h2oGPTe UI
+- An optional Helm chart to deploy RedHatAI/gpt-oss-20b with vLLM on OpenShift AI, plus instructions to connect it or an external endpoint in the h2oGPTe UI
 - Sample documents from the Red Hat OpenShift and OpenShift AI documentation, to upload to an h2oGPTe collection
 
 The h2oGPTe container images and license are provided by H2O.ai (see [Prerequisites](#prerequisites)).
@@ -70,7 +70,7 @@ The h2oGPTe container images and license are provided by H2O.ai (see [Prerequisi
 
 h2oGPTe works with any LLM that has an OpenAI-compatible API. This quickstart supports two options:
 
-- **Model on the cluster (recommended):** you deploy gpt-oss-20b with vLLM from the [OpenShift AI dashboard](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5). This keeps all data on the cluster, and needs one more GPU and OpenShift AI.
+- **Model on the cluster (recommended):** run `make install INSTALL_MODEL=true` to deploy RedHatAI/gpt-oss-20b with vLLM on OpenShift AI. This keeps all data on the cluster, and needs one more GPU and OpenShift AI.
 - **External model endpoint:** h2oGPTe uses an existing OpenAI-compatible endpoint, such as [Models-as-a-Service (MaaS)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/govern_llm_access_with_models-as-a-service/index) in Red Hat OpenShift AI, or a model service that your organization already runs. No GPU or OpenShift AI is needed for the model. The relevant document passages and the questions are sent to that endpoint.
 
 With either option, you add the model in the h2oGPTe UI after installation. See [Connect a model](#connect-a-model).
@@ -92,7 +92,7 @@ By the end of this quickstart, you will have:
 - **[H2O Enterprise h2oGPTe](https://h2o.ai/platform/enterprise-h2ogpte/)**: enterprise RAG platform for document ingestion, search, and question answering with citations
 - **[Red Hat OpenShift AI](https://www.redhat.com/en/products/ai/openshift-ai) (KServe)**: serves the LLM on the cluster
 - **[vLLM](https://github.com/vllm-project/vllm)**: high-throughput inference engine that serves the model
-- **[gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)**: the default open-weight model (Apache 2.0, not gated)
+- **[gpt-oss-20b](https://huggingface.co/RedHatAI/gpt-oss-20b)**: the default open-weight model (Apache 2.0, not gated)
 - **[Models-as-a-Service (MaaS)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/govern_llm_access_with_models-as-a-service/index)**: optional external model endpoint, instead of the model on the cluster
 - **[NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/index.html)**: makes the GPUs available to h2oGPTe and the model server
 - **[Keycloak](https://www.keycloak.org/)**: user login for h2oGPTe
@@ -110,7 +110,7 @@ By the end of this quickstart, you will have:
 | **Identity** | Keycloak (included with h2oGPTe) | User login for h2oGPTe |
 | **Data services** | PostgreSQL, MinIO, Redis (included with h2oGPTe) | Metadata, document storage, and caching |
 | **Vector database** | [VEX](https://docs.h2o.ai/enterprise-h2ogpte/architecture/vector-database) (included with h2oGPTe) | Stores the document passages and their embeddings for search |
-| **Model inference** | vLLM on KServe with an open LLM (1 GPU; gpt-oss-20b in this quickstart), in the `h2o-llm` OpenShift AI project | Serves the LLM through an OpenAI-compatible API |
+| **Model inference** | vLLM on KServe with an open LLM (1 GPU; gpt-oss-20b in this quickstart), in the same namespace as h2oGPTe | Serves the LLM through an OpenAI-compatible API |
 | **External model (optional)** | An OpenAI-compatible endpoint, for example MaaS | Replaces the model on the cluster |
 | **Cluster operators** | Red Hat OpenShift AI, NVIDIA GPU Operator, Node Feature Discovery | OpenShift AI serves the model on the cluster. The GPU Operator provides the GPU drivers and device plugin. Node Feature Discovery labels the GPU nodes for the GPU Operator. |
 
@@ -157,7 +157,7 @@ GPU notes:
 
 - `cluster-admin`
 
-Cluster administrator access is required because the installation creates a namespace and a ClusterRole and ClusterRoleBinding for h2oGPTe, and copies the default ingress certificate from the `openshift-ingress` namespace. To deploy the model on the cluster, you also need access to the OpenShift AI dashboard and permission to create a data science project.
+Cluster administrator access is required because the installation creates a namespace and a ClusterRole and ClusterRoleBinding for h2oGPTe, and copies the default ingress certificate from the `openshift-ingress` namespace.
 
 ## Deploy
 
@@ -171,10 +171,10 @@ Before you install, make sure you have the following:
 2. **An OpenShift cluster** that meets the [hardware](#minimum-hardware-requirements) and [software](#minimum-software-requirements) requirements, with the Node Feature Discovery Operator and the NVIDIA GPU Operator installed. OpenShift AI is also needed for the model on the cluster. If you use an external model endpoint instead, you need its URL, model ID, and API key.
 3. **Access to the cluster as a cluster administrator:**
    ```bash
-    oc whoami
-    oc get nodes
+      oc whoami
+      oc get nodes
    ```
-4. **Network access** to Docker Hub, from your workstation (H2O Helm chart) and from the cluster (H2O images). The cluster also needs access to Hugging Face (model download) or to your external model endpoint.
+4. **Network access** to Docker Hub, from your workstation (H2O Helm chart) and from the cluster (H2O images). For the optional model, the cluster also needs access to `registry.redhat.io` (vLLM runtime and modelcar), with valid Red Hat registry pull credentials. An external model requires network access to its endpoint.
 
 This quickstart uses the cluster's default application domain (`*.apps.<cluster-domain>`) and its default certificate, so you don't need to create DNS records or certificates.
 
@@ -193,7 +193,7 @@ Copy the example settings file and add your H2O credentials:
 cp .env.example .env
 ```
 
-Edit `.env`. All variables must be set; the installation script stops if one is missing. `.env.example` contains the default values.
+Edit `.env`. All H2O variables must be set; the installation script stops if one is missing. `.env.example` contains the default values.
 
 | Variable | Description | Default in `.env.example` |
 | --- | --- | --- |
@@ -217,7 +217,13 @@ Run the installation script through Make:
 make deploy
 ```
 
-You can also run `./scripts/install.sh` directly. Both commands read the repository-root `.env` as Bash variables.
+To also deploy the model, run:
+
+```bash
+make deploy INSTALL_MODEL=true
+```
+
+Without `INSTALL_MODEL=true`, installation only deploys h2oGPTe. All commands read the repository-root `.env` as Bash variables.
 
 The script prints each step as it runs:
 
@@ -252,7 +258,7 @@ Keycloak administration console
 Next: connect a model and load the sample documents (see README.md).
 ```
 
-The script doesn't deploy or configure a model, and doesn't upload documents. You do that after installation, in [Connect a model](#connect-a-model) and [Load the sample documents](#load-the-sample-documents).
+With `INSTALL_MODEL=true`, the script installs the model Helm release after h2oGPTe setup. You still register the model in the h2oGPTe UI and upload documents as described in [Connect a model](#connect-a-model) and [Load the sample documents](#load-the-sample-documents).
 
 The script is safe to run again. Steps that are already complete don't change anything.
 
@@ -274,27 +280,36 @@ h2oGPTe needs an LLM to answer questions. Connect one with either option below. 
 
 #### Option 1: deploy the model on OpenShift AI (recommended)
 
-
-
-1. Open the OpenShift AI dashboard. From the OpenShift web console, select the application launcher and then **Red Hat OpenShift AI**.
-2. Create a data science project for the model, for example `h2o-llm`.
-3. Deploy the model with the vLLM serving runtime:
-   - Model: `openai/gpt-oss-20b` from Hugging Face
-   - Serving runtime: vLLM NVIDIA GPU ServingRuntime for KServe
-   - Hardware profile: 1 NVIDIA GPU, with the toleration for the GPU node taint
-   - Additional arguments: `--tool-call-parser=openai --enable-auto-tool-choice`
-   - Select **Make deployed models available through an external route** only if you need access from outside the cluster. h2oGPTe uses the internal endpoint.
-   - Select **Require token authentication** to protect the endpoint, and copy the token.
-4. Wait until the model status shows **Started**. The first start takes several minutes while the model downloads.
-5. Copy the model's internal endpoint URL, for example `http://gpt-oss-20b-predictor.h2o-llm.svc.cluster.local:8080/v1`.
-
-You can also check the model from the command line:
+If you used `INSTALL_MODEL=true`, the model resources are already installed. To install or upgrade the model separately, run:
 
 ```bash
-oc get inferenceservice -n h2o-llm
+make model-install
 ```
 
-The `READY` column should show `True`.
+This target uses `NAMESPACE` from `.env` and installs the model in the same namespace as h2oGPTe. The endpoint is internal and has no token authentication; use network policies to limit access to trusted workloads.
+
+The chart deploys [RedHatAI/gpt-oss-20b](https://huggingface.co/RedHatAI/gpt-oss-20b) with vLLM and needs one additional NVIDIA GPU. OpenShift AI must have KServe and OCI modelcar support enabled. Model settings live in `deploy/helm/model/values.yaml`. If your GPU nodes have a custom taint, add the matching toleration under `tolerations` in that file before deploying.
+
+Helm submits the resources but does not wait for the model to become ready. Before connecting h2oGPTe, wait for readiness with:
+
+```bash
+oc wait --for=condition=Ready inferenceservice/h2oai-model \
+  -n h2o-knowledge-mgmt --timeout=30m
+```
+
+Replace the namespace if you changed `NAMESPACE`. You can also check the model in the OpenShift AI dashboard. The first start downloads large images. With default settings, use:
+
+- Model ID: `gpt-oss-20b`
+- OpenAI base URL: `http://h2oai-model-predictor.h2o-knowledge-mgmt.svc.cluster.local/v1`
+- API key: a non-empty placeholder such as `unused` if the h2oGPTe form requires it
+
+Replace `h2o-knowledge-mgmt` in the URL if you changed `NAMESPACE`. The model release name is always `h2oai-model`.
+
+To remove only the model and keep h2oGPTe and its data:
+
+```bash
+make model-uninstall
+```
 
 #### Option 2: use an external model endpoint
 
@@ -316,27 +331,29 @@ oc run test-model-access --rm -it --restart=Never \
 2. In the sidebar, select **Models**, and then select **Add Model**.
 3. Switch the dialog to **Raw JSON**, and paste the following model configuration. Replace the values in angle brackets:
    ```json
-    {
-      "display_name": "<model ID>",
-      "base_model": "<model ID>",
-      "inference_server": "litellm",
-      "max_seq_len": 131072,
-      "max_output_seq_len": 65536,
-      "images_num_max": -2,
-      "is_actually_vision_model": true,
-      "is_actually_reasoning_model": true,
-      "lite_llm_yaml": "{\"model_name\": \"<model ID>\", \"litellm_params\": {\"model\": \"openai/<model ID>\", \"api_base\": \"<endpoint URL>\", \"api_key\": \"<API key>\"}}",
-      "cost_per_1k_input_tokens": 0.0001,
-      "cost_per_1k_output_tokens": 0.00025
-    }
+      {
+        "display_name": "<model ID>",
+        "base_model": "<model ID>",
+        "inference_server": "litellm",
+        "max_seq_len": 16384,
+        "max_output_seq_len": 8192,
+        "images_num_max": -2,
+        "is_actually_vision_model": false,
+        "is_actually_reasoning_model": true,
+        "lite_llm_yaml": "{\"model_name\": \"<model ID>\", \"litellm_params\": {\"model\": \"openai/<model ID>\", \"api_base\": \"<endpoint URL>\", \"api_key\": \"<API key>\"}}",
+        "cost_per_1k_input_tokens": 0.0001,
+        "cost_per_1k_output_tokens": 0.00025
+      }
    ```
    - `<model ID>`: the model ID that the endpoint expects, for example `gpt-oss-20b`.
    - `<endpoint URL>`: the endpoint URL, ending in `/v1`.
-   - `<API key>`: the token or API key of the endpoint.
+   - `<API key>`: the token or API key of the endpoint, or `unused` for the internal Helm model.
 
-    `lite_llm_yaml` is a JSON string inside the JSON, so keep the backslashes before its quotes.
+     The context limits shown match the Helm model. Adjust them to your endpoint if you use an external model.
 
-    ![h2oGPTe Add Model dialog in Raw JSON mode, with the configuration for gpt-oss-120b on an external endpoint](docs/images/h2ogpte-add-model-raw-json.png)
+     `lite_llm_yaml` is a JSON string inside the JSON, so keep the backslashes before its quotes.
+
+     ![h2oGPTe Add Model dialog in Raw JSON mode, with the configuration for gpt-oss-120b on an external endpoint](docs/images/h2ogpte-add-model-raw-json.png)
 4. Select **Save**. h2oGPTe tests the model before it saves it.
 5. Run the self-tests for the new model: select **Run self-tests**, then **Quick test**, and then your model. When the tests finish, the model's **Effective status** is **Effective**, and the table shows its estimated accuracy, speed, and latency.
 
@@ -365,9 +382,9 @@ The `sample-documents/` folder is a local staging directory for documents; the r
    - "How do I create a project in OpenShift AI?"
    - "What is a workbench in OpenShift AI, and how do I start one?"
 
-    h2oGPTe answers from the documents in the collection, and names the source, such as the table and page in the document:
+     h2oGPTe answers from the documents in the collection, and names the source, such as the table and page in the document:
 
-    ![h2oGPTe chat in the Red Hat OpenShift and OpenShift AI collection, answering "What are the main components of OpenShift Container Platform" with a table of Kubernetes components and the source table and page](docs/images/h2ogpte-chat-answer.png)
+     ![h2oGPTe chat in the Red Hat OpenShift and OpenShift AI collection, answering "What are the main components of OpenShift Container Platform" with a table of Kubernetes components and the source table and page](docs/images/h2ogpte-chat-answer.png)
 3. **Check the sources.** Below the answer, select **References**. The **References** panel shows the document pages that the answer used, with the matching passages highlighted and a relevance score for each page. Use **Score Threshold** to show only the most relevant pages.
 
    ![h2oGPTe chat answer with the References panel open, showing highlighted pages of the OpenShift Overview PDF with their scores](docs/images/h2ogpte-references.png)
@@ -390,24 +407,9 @@ make undeploy
 
 You can also run `./scripts/uninstall.sh` directly. Both commands keep the namespace confirmation prompt.
 
-The script reads `NAMESPACE` from `.env`, shows the cluster that you're logged in to, and asks you to type the namespace name to confirm. It then uninstalls the h2oGPTe Helm release and deletes the namespace, with all documents, collections, and users stored in h2oGPTe. It doesn't remove the cluster operators (NVIDIA GPU Operator, Node Feature Discovery, OpenShift AI).
+The script reads `NAMESPACE` from `.env`, shows the cluster that you're logged in to, and asks you to type the namespace name to confirm. It uninstalls the optional model release first, then the h2oGPTe release, and deletes the namespace, with all documents, collections, and users stored in h2oGPTe. Model cleanup also runs when the model was installed separately; a missing model release is harmless. It doesn't remove the cluster operators (NVIDIA GPU Operator, Node Feature Discovery, OpenShift AI).
 
-The script prints the following, after the cluster context:
-
-```text
-This deletes the Helm release h2oai and the namespace h2o-knowledge-mgmt,
-including all documents, collections, and users stored in h2oGPTe.
-Type the namespace name to continue: h2o-knowledge-mgmt
-
-==> Step 1: Helm release h2oai
-release "h2oai" uninstalled
-
-==> Step 2: namespace h2o-knowledge-mgmt
-namespace "h2o-knowledge-mgmt" deleted
-
-==> Done
-If you deployed a model in OpenShift AI, delete it in the OpenShift AI dashboard.
-```
+Models you deployed manually in other namespaces are unchanged.
 
 ## Troubleshooting
 
@@ -451,7 +453,7 @@ oc get routes -n h2o-knowledge-mgmt
 - [Serving models with KServe on OpenShift AI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/deploying_models/index)
 - [NVIDIA GPU Operator on OpenShift](https://docs.nvidia.com/datacenter/cloud-native/openshift/latest/index.html)
 - [vLLM](https://docs.vllm.ai/)
-- [gpt-oss-20b model card](https://huggingface.co/openai/gpt-oss-20b)
+- [gpt-oss-20b model card](https://huggingface.co/RedHatAI/gpt-oss-20b)
 
 ## Where to get help
 
